@@ -1,82 +1,99 @@
-import { Router } from 'itty-router'
+import {
+  json,
+  missing,
+  error,
+  status,
+  withContent,
+  withParams,
+  StatusError,
+  ThrowableRouter,
+} from 'itty-router-extras'
 
-// Create a new router
-const router = Router()
+// Fetch the latest entropy file, or one specified by Git commit ID
+const fetchEntropy = async (id = null) => {
+  let entropy, resp
 
-/*
-Our index route, a simple hello world.
-*/
-router.get("/", () => {
-  return new Response("Hello, world! This is the root page of your Worker template.")
-})
-
-/*
-This route demonstrates path parameters, allowing you to extract fragments from the request
-URL.
-
-Try visit /example/hello and see the response.
-*/
-router.get("/example/:text", ({ params }) => {
-  // Decode text like "Hello%20world" into "Hello world"
-  let input = decodeURIComponent(params.text)
-
-  // Construct a buffer from our input
-  let buffer = Buffer.from(input, "utf8")
-
-  // Serialise the buffer into a base64 string
-  let base64 = buffer.toString("base64")
-
-  // Return the HTML with the string to the client
-  return new Response(`<p>Base64 encoding: <code>${base64}</code></p>`, {
-    headers: {
-      "Content-Type": "text/html"
-    }
-  })
-})
-
-/*
-This shows a different HTTP method, a POST.
-
-Try send a POST request using curl or another tool.
-
-Try the below curl command to send JSON:
-
-$ curl -X POST <worker> -H "Content-Type: application/json" -d '{"abc": "def"}'
-*/
-router.post("/post", async request => {
-  // Create a base object with some fields.
-  let fields = {
-    "asn": request.cf.asn,
-    "colo": request.cf.colo
+  if (id) {
+    // fetch a specific entropy file from Github
+    resp = await fetch(
+      `https://raw.githubusercontent.com/truestamp/observable-entropy/${id}/hash.json`,
+    )
+  } else {
+    // fetch the latest entropy file from Github
+    resp = await fetch(
+      'https://raw.githubusercontent.com/truestamp/observable-entropy/main/hash.json',
+    )
   }
 
-  // If the POST data is JSON then attach it to our response.
-  if (request.headers.get("Content-Type") === "application/json") {
-    fields["json"] = await request.json()
+  if (resp && resp.ok) {
+    entropy = await resp.json()
+  } else {
+    throw new Error(
+      `entropy fetch failed with status ${resp.status} : ${resp.statusText}`,
+    )
   }
 
-  // Serialise the JSON to a string.
-  const returnData = JSON.stringify(fields, null, 2);
+  if (entropy && entropy.hash) {
+    return entropy
+  } else {
+    throw new Error(`invalid entropy file`)
+  }
+}
 
-  return new Response(returnData, {
-    headers: {
-      "Content-Type": "application/json"
-    }
-  })
+const router = ThrowableRouter({ stack: true })
+
+router.get('/', () => {
+  throw new StatusError(404, 'Not Found : try GET /latest')
 })
 
-/*
-This is the last route we define, it will match anything that hasn't hit a route we've defined
-above, therefore it's useful as a 404 (and avoids us hitting worker exceptions, so make sure to include it!).
+router.get('/latest', async () => {
+  try {
+    let entropy = await fetchEntropy()
+    return json(entropy)
+  } catch (error) {
+    throw new StatusError(404, `Not Found : ${error.message}`)
+  }
+})
 
-Visit any page that doesn't exist (e.g. /foobar) to see it in action.
-*/
-router.all("*", () => new Response("404, not found!", { status: 404 }))
+// router.post('/latest', withContent, async ({ content }) => {
+//   if (content && content.sha) {
+//     await ENTROPY_KV.put('latest:sha', content.sha)
+//   }
 
-/*
-This snippet ties our worker to the router we deifned above, all incoming requests
-are passed to the router where your routes are called and the response is sent.
-*/
-addEventListener('fetch', (e) => {
-  e.respondWith(router.handle(e.request))
+//   return new Response('Creating latest: ' + JSON.stringify(content))
+// })
+
+// router.get('/history', () => {
+//   throw new StatusError(404, 'Not Found : try GET /history/commit/:sha')
+// })
+
+// router.get('/history/commit', () => {
+//   throw new StatusError(404, 'Not Found : try GET /history/commit/:sha')
+// })
+
+// retrieve by the git commit ID when hash.json was created (for the previous commit)
+router.get('/commit/:id', withParams, async ({ id }) => {
+  try {
+    let entropy = await fetchEntropy(id)
+    return json(entropy)
+  } catch (error) {
+    throw new StatusError(404, `Not Found : ${error.message}`)
+  }
+})
+
+// retrieve by the entropy hash value, which is an index lookup for the associated commit ID
+router.get('/hash/:hash', withParams, async ({ hash }) => {
+  try {
+    let entropy = await fetchEntropy(sha)
+    return json(entropy)
+  } catch (error) {
+    throw new StatusError(404, `Not Found : ${error.message}`)
+  }
+})
+
+router.all('*', () => missing('Not Found'))
+
+// Attach the router "handle" to the event handler
+addEventListener('fetch', event => {
+  event.respondWith(router.handle(event.request))
 })

@@ -10,7 +10,7 @@
   },
   "author": "Glenn Rempe <glenn@truestamp.com>",
   "devDependencies": {
-    "prettier": "^1.18.2"
+    "prettier": "^2.3.1"
   },
   "dependencies": {
     "itty-router": "^2.3.10",

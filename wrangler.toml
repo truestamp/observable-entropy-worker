@@ -5,3 +5,7 @@ account_id = "695154f6abd64a9df3e04b21e0aa0fc4"
 workers_dev = true
 route = ""
 zone_id = "dfde562d26487f5e3d6f3ec412bb16a6"
+
+kv_namespaces = [ 
+  { binding = "ENTROPY_KV", id = "5fef3e20a522448bb9b6322302c8379a" }
+]
