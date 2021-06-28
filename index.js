@@ -9,38 +9,52 @@ import {
   ThrowableRouter,
 } from 'itty-router-extras'
 
-// Fetch the latest entropy file, or one specified by Git commit ID
-const fetchEntropy = async (id = null) => {
-  let entropy, resp
+const SHA1_REGEX = /^(?:(0x)*([A-Fa-f0-9]{2}){20})$/i
+const SHA256_REGEX = /^(?:(0x)*([A-Fa-f0-9]{2}){32})$/i
 
-  if (id) {
-    // fetch a specific entropy file from Github
-    resp = await fetch(
-      `https://raw.githubusercontent.com/truestamp/observable-entropy/${id}/hash.json`,
-    )
-  } else {
-    // fetch the latest entropy file from Github
-    resp = await fetch(
-      'https://raw.githubusercontent.com/truestamp/observable-entropy/main/hash.json',
-    )
-  }
+async function readJSONFromURL(url) {
+  const resp = await fetch(url)
 
   if (resp && resp.ok) {
-    entropy = await resp.json()
+    return await resp.json()
   } else {
     throw new Error(
-      `entropy fetch failed with status ${resp.status} : ${resp.statusText}`,
+      `fetch failed with status ${resp.status} : ${resp.statusText}`,
     )
-  }
-
-  if (entropy && entropy.hash) {
-    return entropy
-  } else {
-    throw new Error(`invalid entropy file`)
   }
 }
 
-const router = ThrowableRouter({ stack: true })
+// Fetch the latest entropy file, or one specified by Git commit ID
+const fetchEntropy = async (id = null) => {
+  let entropy
+
+  const URL_PREFIX =
+    'https://raw.githubusercontent.com/truestamp/observable-entropy'
+
+  if (id && SHA1_REGEX.test(id)) {
+    // SHA1 commit : fetch a specific entropy file from Github
+    entropy = await readJSONFromURL(`${URL_PREFIX}/${id}/entropy.json`)
+  } else if (id && SHA256_REGEX.test(id)) {
+    // SHA-256 entropy hash : Use the pre-written map of SHA-256 entropy value to lookup
+    // Github commit ID containing truestamp/observable-entropy/entropy.json
+    let index = await readJSONFromURL(
+      `${URL_PREFIX}/main/index/by/entropy_hash/${id}.json`,
+    )
+
+    if (!index || !index.id) {
+      throw new Error(`fetch failed retrieving hash index`)
+    }
+
+    entropy = await readJSONFromURL(`${URL_PREFIX}/${index.id}/entropy.json`)
+  } else {
+    // NO ID : fetch the latest entropy file from Github
+    entropy = await readJSONFromURL(`${URL_PREFIX}/entropy.json`)
+  }
+
+  return entropy
+}
+
+const router = ThrowableRouter({ stack: false })
 
 router.get('/', () => {
   throw new StatusError(404, 'Not Found : try GET /latest')
@@ -55,24 +69,12 @@ router.get('/latest', async () => {
   }
 })
 
-// router.post('/latest', withContent, async ({ content }) => {
-//   if (content && content.sha) {
-//     await ENTROPY_KV.put('latest:sha', content.sha)
-//   }
-
-//   return new Response('Creating latest: ' + JSON.stringify(content))
-// })
-
-// router.get('/history', () => {
-//   throw new StatusError(404, 'Not Found : try GET /history/commit/:sha')
-// })
-
-// router.get('/history/commit', () => {
-//   throw new StatusError(404, 'Not Found : try GET /history/commit/:sha')
-// })
-
 // retrieve by the git commit ID when hash.json was created (for the previous commit)
 router.get('/commit/:id', withParams, async ({ id }) => {
+  if (!SHA1_REGEX.test(id)) {
+    throw new StatusError(400, `Bad Request : ID must be a Github SHA1 hash`)
+  }
+
   try {
     let entropy = await fetchEntropy(id)
     return json(entropy)
@@ -82,9 +84,17 @@ router.get('/commit/:id', withParams, async ({ id }) => {
 })
 
 // retrieve by the entropy hash value, which is an index lookup for the associated commit ID
+// https://entropy.truestamp.com/hash/44091b5c935c576ab255540f386afbcd4c7baf79d00599e20c9a5effd7794a42
 router.get('/hash/:hash', withParams, async ({ hash }) => {
+  if (!SHA256_REGEX.test(hash)) {
+    throw new StatusError(
+      400,
+      `Bad Request : hash must be a SHA-256 entropy hash`,
+    )
+  }
+
   try {
-    let entropy = await fetchEntropy(sha)
+    let entropy = await fetchEntropy(hash)
     return json(entropy)
   } catch (error) {
     throw new StatusError(404, `Not Found : ${error.message}`)
