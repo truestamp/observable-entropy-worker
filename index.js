@@ -48,7 +48,7 @@ const fetchEntropy = async (id = null) => {
     entropy = await readJSONFromURL(`${URL_PREFIX}/${index.id}/entropy.json`)
   } else {
     // NO ID : fetch the latest entropy file from Github
-    entropy = await readJSONFromURL(`${URL_PREFIX}/entropy.json`)
+    entropy = await readJSONFromURL(`${URL_PREFIX}/main/entropy.json`)
   }
 
   return entropy
