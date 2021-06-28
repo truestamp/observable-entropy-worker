@@ -60,6 +60,8 @@ router.get('/', () => {
   throw new StatusError(404, 'Not Found : try GET /latest')
 })
 
+// Get the latest entropy.json file
+// http https://entropy.truestamp.com/latest
 router.get('/latest', async () => {
   try {
     let entropy = await fetchEntropy()
@@ -70,6 +72,7 @@ router.get('/latest', async () => {
 })
 
 // retrieve by the git commit ID when hash.json was created (for the previous commit)
+// http https://entropy.truestamp.com/commit/678e9cbef4e78eacf042ac886164e31fb72b6fd1
 router.get('/commit/:id', withParams, async ({ id }) => {
   if (!SHA1_REGEX.test(id)) {
     throw new StatusError(400, `Bad Request : ID must be a Github SHA1 hash`)
