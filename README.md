@@ -4,6 +4,18 @@ A Cloudflare worker proxy that retrieves the transparent and verifiable entropy 
 
 ## Examples
 
+### Retrieve the `ed25519` public key used for verifying the `hash` `signature`
+
+`https://entropy.truestamp.com/pubkey`
+
+```sh
+❯ http https://entropy.truestamp.com/pubkey                                                               
+
+{
+    "key": "2682144fd3a0a10edce91b9c622bf7e83ccb3816574e1a4071ad16842954dd26"
+}
+```
+
 ### Retrieve the latest entropy file
 
 `https://entropy.truestamp.com/latest`.

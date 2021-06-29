@@ -67,6 +67,14 @@ router.get('/', () => {
   throw new StatusError(404, 'Not Found : try GET /latest')
 })
 
+// The ed25519 public key, for the corresponding private key stored as a
+// repository secret in the observable-entropy github repo.
+router.get('/pubkey', () => {
+  return json({
+    key: '2682144fd3a0a10edce91b9c622bf7e83ccb3816574e1a4071ad16842954dd26',
+  })
+})
+
 // Get the latest entropy.json file
 // http https://entropy.truestamp.com/latest
 router.get('/latest', async () => {
