@@ -12,12 +12,7 @@ const SHA256_REGEX = /^(?:(0x)*([A-Fa-f0-9]{2}){32})$/i
 async function readJSONFromURL(url) {
   // w/ cloudflare caching
   // https://developers.cloudflare.com/workers/examples/cache-using-fetch
-  const resp = await fetch(url, {
-    cf: {
-      cacheTtl: 15,
-      cacheEverything: true,
-    },
-  })
+  const resp = await fetch(url)
 
   if (resp && resp.ok) {
     return await resp.json()
