@@ -1,9 +1,6 @@
 import {
   json,
   missing,
-  error,
-  status,
-  withContent,
   withParams,
   StatusError,
   ThrowableRouter,

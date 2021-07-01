@@ -7,5 +7,5 @@ route = "*entropy.truestamp.com/*"
 zone_id = "dfde562d26487f5e3d6f3ec412bb16a6"
 
 kv_namespaces = [ 
-  { binding = "ENTROPY_KV", id = "5fef3e20a522448bb9b6322302c8379a" }
+  { binding = "ENTROPY_KV", preview_id = "f546ae6274614a5a904706c23ab5c9ee", id = "5fef3e20a522448bb9b6322302c8379a" }
 ]
