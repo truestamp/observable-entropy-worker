@@ -1,11 +1,18 @@
+type = "javascript"
 name = "observable-entropy-worker"
-type = "webpack"
-
 account_id = "695154f6abd64a9df3e04b21e0aa0fc4"
+zone_id = "dfde562d26487f5e3d6f3ec412bb16a6"
+compatibility_date = "2021-09-18"
+
 workers_dev = false
 route = "*entropy.truestamp.com/*"
-zone_id = "dfde562d26487f5e3d6f3ec412bb16a6"
 
 kv_namespaces = [ 
   { binding = "ENTROPY_KV", preview_id = "f546ae6274614a5a904706c23ab5c9ee", id = "5fef3e20a522448bb9b6322302c8379a" }
 ]
+
+[build]
+command = "npm install && npm run build"
+
+[build.upload]
+format = "service-worker"
