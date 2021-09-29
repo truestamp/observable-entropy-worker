@@ -8,7 +8,7 @@ workers_dev = false
 route = "*entropy.truestamp.com/*"
 
 kv_namespaces = [ 
-  { binding = "ENTROPY_KV", preview_id = "f546ae6274614a5a904706c23ab5c9ee", id = "5fef3e20a522448bb9b6322302c8379a" }
+  { binding = "OBSERVABLE_ENTROPY", preview_id = "34f56fd8477046809e9c1c6effc668bc", id = "6ec2d152ffd24e848d522089dd63cd3e" }
 ]
 
 [build]
