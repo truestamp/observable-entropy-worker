@@ -88,6 +88,7 @@ const API = new Router()
 
 API.add('GET', '/', async (req, res): Promise<void> => {
   res.setHeader('Cache-Control', 'public, max-age=60')
+  res.setHeader('Access-Control-Allow-Origin', '*')
   res.send(404, 'Not Found : try GET /latest')
 })
 
@@ -95,6 +96,7 @@ API.add('GET', '/', async (req, res): Promise<void> => {
 // repository secret in the observable-entropy github repository.
 API.add('GET', '/pubkey', async (req, res): Promise<void> => {
   res.setHeader('Cache-Control', 'public, max-age=60')
+  res.setHeader('Access-Control-Allow-Origin', '*')
   res.send(200, {
     key: '2682144fd3a0a10edce91b9c622bf7e83ccb3816574e1a4071ad16842954dd26',
   })
@@ -105,6 +107,8 @@ API.add('GET', '/pubkey', async (req, res): Promise<void> => {
 API.add('GET', '/latest', async (req, res): Promise<void> => {
   try {
     const entropy = await fetchEntropy()
+    res.setHeader('Cache-Control', 'public, max-age=5')
+    res.setHeader('Access-Control-Allow-Origin', '*')
     res.send(200, entropy)
   } catch (error) {
     if (error instanceof Error) {
@@ -124,7 +128,8 @@ API.add('GET', '/commit/:id', async (req, res) => {
 
   try {
     const entropy = await fetchEntropy(id)
-    res.setHeader('Cache-Control', 'public, max-age=60')
+    res.setHeader('Cache-Control', 'public, max-age=5')
+    res.setHeader('Access-Control-Allow-Origin', '*')
     res.send(200, entropy)
   } catch (error) {
     if (error instanceof Error) {
@@ -144,7 +149,8 @@ API.add('GET', '/hash/:hash', async (req, res) => {
 
   try {
     const entropy = await fetchEntropy(hash)
-    res.setHeader('Cache-Control', 'public, max-age=60')
+    res.setHeader('Cache-Control', 'public, max-age=5')
+    res.setHeader('Access-Control-Allow-Origin', '*')
     res.send(200, entropy)
   } catch (error) {
     if (error instanceof Error) {
@@ -257,7 +263,8 @@ API.add('GET', '/entries', async (req, res) => {
     kvEntries.push(parsedKvEntry.entropy)
   }
 
-  res.setHeader('Cache-Control', 'public, max-age=10')
+  res.setHeader('Cache-Control', 'public, max-age=5')
+  res.setHeader('Access-Control-Allow-Origin', '*')
   res.send(200, kvEntries)
 })
 
