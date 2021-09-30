@@ -104,13 +104,36 @@ API.add('GET', '/pubkey', async (req, res): Promise<void> => {
   })
 })
 
-// Get the latest entropy.json file
+// Get the latest entropy.json file from Cloudflare KV or the web
 // http https://entropy.truestamp.com/latest
 API.add('GET', '/latest', async (req, res): Promise<void> => {
-  try {
-    const entropy = await fetchEntropy()
+  const latest = await read(OBSERVABLE_ENTROPY, 'latest', {
+    type: 'text',
+    metadata: true,
+  })
+
+  if (latest && latest.value) {
+    const parsedKvLatest = JSON.parse(latest.value)
+    if (!parsedKvLatest || !parsedKvLatest.hash) {
+      console.log(`parsedKvLatest is null  or missing hash: ${parsedKvLatest}`)
+    }
+
     res.setHeader('Cache-Control', 'public, max-age=5, s-max-age=5')
     res.setHeader('Access-Control-Allow-Origin', '*')
+
+    if (parsedKvLatest && parsedKvLatest.hash) {
+      res.send(200, {
+        ...parsedKvLatest,
+      })
+    }
+  } else {
+    console.log(`KV latest is null or missing value : ${latest}`)
+  }
+
+  // fallback to retrieving latest from the web, this is less desirable
+  // since it will be cached for some minutes and will be stale.
+  try {
+    const entropy = await fetchEntropy()
     res.send(200, entropy)
   } catch (error) {
     if (error instanceof Error) {
