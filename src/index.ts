@@ -43,7 +43,7 @@ async function digestMessage(message: string) {
 async function fetchJsonFromURL(url: string) {
   // w/ cloudflare caching
   // https://developers.cloudflare.com/workers/examples/cache-using-fetch
-  const resp = await fetch(url)
+  const resp = await fetch(url, { headers: { 'Cache-Control': 'no-cache' } })
 
   if (resp.ok) {
     return await resp.json()
