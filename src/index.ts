@@ -86,10 +86,12 @@ const fetchEntropy = async (id: string | null = null) => {
 
 const API = new Router()
 
+// Redirect to GitHub repository README
 API.add('GET', '/', async (req, res): Promise<void> => {
   res.setHeader('Cache-Control', 'public, max-age=5, s-max-age=5')
   res.setHeader('Access-Control-Allow-Origin', '*')
-  res.send(404, 'Not Found : try GET /latest')
+  res.setHeader('Location', 'https://github.com/truestamp/observable-entropy')
+  res.send(302, 'Found')
 })
 
 // Get the ed25519 public key, for the corresponding private key which is stored as a
