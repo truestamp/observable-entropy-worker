@@ -5,7 +5,7 @@ zone_id = "dfde562d26487f5e3d6f3ec412bb16a6"
 compatibility_date = "2021-09-18"
 
 workers_dev = false
-route = "*entropy.truestamp.com/*"
+route = "https://entropy.truestamp.com/*"
 
 kv_namespaces = [ 
   { binding = "OBSERVABLE_ENTROPY", preview_id = "34f56fd8477046809e9c1c6effc668bc", id = "6ec2d152ffd24e848d522089dd63cd3e" }

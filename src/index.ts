@@ -90,7 +90,7 @@ const API = new Router()
 API.add('GET', '/', async (req, res): Promise<void> => {
   res.setHeader('Cache-Control', 'public, max-age=5, s-max-age=5')
   res.setHeader('Access-Control-Allow-Origin', '*')
-  res.setHeader('Location', 'https://github.com/truestamp/observable-entropy')
+  res.setHeader('Location', 'https://observable-entropy.truestamp.com')
   res.send(302, 'Found')
 })
 
