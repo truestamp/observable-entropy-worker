@@ -5,7 +5,13 @@ stored in the
 [truestamp/observable-entropy](https://github.com/truestamp/observable-entropy)
 repository.
 
-## Examples
+There is a public website that draws its data in near real-time from this API.
+The website displays the current entropy value, the time it was last updated,
+and the current system time of the viewer.
+
+[https://observable-entropy.truestamp.com](https://observable-entropy.truestamp.com)
+
+## HTTP API Usage Examples
 
 ### Retrieve the `ed25519` public key used for verifying the `hash` `signature`
 
