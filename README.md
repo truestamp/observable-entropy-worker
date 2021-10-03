@@ -1,19 +1,40 @@
 # Observable Entropy Worker
 
-A Cloudflare worker proxy that retrieves the transparent and verifiable entropy
-stored in the
-[truestamp/observable-entropy](https://github.com/truestamp/observable-entropy)
-repository.
+## What is Observable Entropy?
 
-There is a public website that draws its data in near real-time from this API.
-The website displays the current entropy value, the time it was last updated,
+Please take a look at the
+[Observable Entropy README](https://github.com/truestamp/observable-entropy#readme)
+to learn more about the larger project and its goals.
+
+## About this Code
+
+This public repository contains the code for the API of the
+[Observable Entropy](https://github.com/truestamp/observable-entropy#readme)
+project for review.
+
+This Cloudflare Worker provides the HTTP REST API the accesses data stored in
+the main Github repository. It is implemented as a
+[Cloudflare Worker](https://workers.cloudflare.com/) using the
+[WorkTop](https://github.com/lukeed/worktop) API framework. It provides a
+transparent proxy to the raw data, and also uses
+[Cloudflare Workers KV](https://www.cloudflare.com/products/workers-kv/) to
+store the latest entropy data for lightning fast access worldwide.
+
+There is a [public website](https://observable-entropy.truestamp.com) that draws
+its data continuously, in near real-time, from this API.
+
+That website displays the current entropy value, the time it was last updated,
 and the current system time of the viewer.
 
-[https://observable-entropy.truestamp.com](https://observable-entropy.truestamp.com)
+## Related Repositories
+
+- [truestamp/observable-entropy](https://github.com/truestamp/observable-entropy#readme)
+- [truestamp/observable-entropy-worker](https://github.com/truestamp/observable-entropy-worker)
+- [truestamp/observable-entropy-nextjs](https://github.com/truestamp/observable-entropy-nextjs)
 
 ## HTTP API Usage Examples
 
-### Retrieve the `ed25519` public key used for verifying the `hash` `signature`
+### Retrieve the `ed25519` public key used for verifying the `hash` `signature` of captured entropy
 
 `https://entropy.truestamp.com/pubkey`
 
@@ -88,7 +109,7 @@ $ http https://entropy.truestamp.com/latest
 }
 ```
 
-### Retrieve an entropy file stored in a specified Git commit ID
+### Retrieve an entropy file referenced by a specified Git commit ID
 
 The `id` value in the URL is required to be a hex encoded SHA1 Git commit value
 (20 bytes).
@@ -222,19 +243,6 @@ $ http https://entropy.truestamp.com/hash/605ba3b4cce44f2a09ad681d92aa20f5d12265
 }
 ```
 
-## Publishing
+## Legal
 
-Before publishing your code you need to edit `wrangler.toml` file and add your
-Cloudflare `account_id` - more information about configuring and publishing your
-code can be found
-[in the documentation](https://developers.cloudflare.com/workers/learning/getting-started#7-configure-your-project-for-deployment).
-
-Once you are ready, you can build, test, and publish your code by running the
-following command:
-
-```sh
-npm run format
-npm run build
-npm run test
-wrangler publish
-```
+Copyright © 2020-2021 Truestamp Inc. All rights reserved.
