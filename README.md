@@ -4,26 +4,19 @@
 
 Please take a look at the
 [Observable Entropy README](https://github.com/truestamp/observable-entropy#readme)
-to learn more about the larger project and its goals.
+to learn more about the larger project and its goals. This repository only contains the REST API component of that project.
 
 ## About this Code
 
-This public repository contains the code for the API of the
-[Observable Entropy](https://github.com/truestamp/observable-entropy#readme)
-project for review.
-
-This Cloudflare Worker provides the HTTP REST API the accesses data stored in
-the main Github repository. It is implemented as a
-[Cloudflare Worker](https://workers.cloudflare.com/) using the
+This [Cloudflare Worker](https://workers.cloudflare.com/) provides the HTTP REST API that accesses data stored in
+the main Github repository. It is implemented using the
 [WorkTop](https://github.com/lukeed/worktop) API framework. It provides a
-transparent proxy to the raw data, and also uses
+transparent proxy to the raw data stored in GitHub, and also uses
 [Cloudflare Workers KV](https://www.cloudflare.com/products/workers-kv/) to
 store the latest entropy data for lightning fast access worldwide.
 
 There is a [public website](https://observable-entropy.truestamp.com) that draws
-its data continuously, in near real-time, from this API.
-
-That website displays the current entropy value, the time it was last updated,
+its data continuously, in near real-time, from this API. The website displays the current entropy value, the time it was last updated,
 and the current system time of the viewer.
 
 ## Related Repositories
@@ -54,58 +47,59 @@ and the current system time of the viewer.
 $ http https://entropy.truestamp.com/latest
 
 {
-    "createdAt": "2021-06-28T17:38:30.860Z",
+    "createdAt": "2022-04-08T20:00:21.773Z",
     "files": [
         {
-            "hash": "b54ec694d96aebcc32a61c010fa88dc10a6f8adc6f419b32e05db81d0378c91a",
+            "hash": "b4c8893daa20a5022bd745a44de76ea4f958fa59954b284aa9c8b124d21f6bea",
             "hashType": "sha256",
             "name": "bitcoin.json"
         },
         {
-            "hash": "478d3fafa7db4eb98286626684b939572cf3c3651173dbc31bf56be29f436c27",
+            "hash": "9c1fc63967bb1499b40ed90eb90d28bba66e9bbac2921db2a2e33cbcd91d2229",
             "hashType": "sha256",
             "name": "drand-beacon.json"
         },
         {
-            "hash": "8a07b05139dc541cb41ba1800ccb75123339f99524c4e6e797e0c05683fd335d",
+            "hash": "027ba201dbd00f5477d65d1d27c9c7556206bb99c220d9d80d1d4139d81f4934",
             "hashType": "sha256",
             "name": "entropy_previous.json"
         },
         {
-            "hash": "638d71ae1c9009b264bd35bb44ff3c514bcd27f93654f4205b6dc867602a8085",
+            "hash": "592b0e169347f62002dd40dcfcdc5ca7c02fcfc7550f768830af1354ea011eba",
             "hashType": "sha256",
             "name": "ethereum.json"
         },
         {
-            "hash": "df3788dd3f6a99cd48aa608317098e4d8de82241b68b16bad89a2ae5151ecbef",
+            "hash": "668f7e1aad603a3ba5055f1ca553be16032c1356d297ef82419c624fb9f15588",
             "hashType": "sha256",
             "name": "hacker-news.json"
         },
         {
-            "hash": "c78d38f7bd47b0e68b4a9b0270867d3d84f094a937155b875dc47837ca271f01",
+            "hash": "dc3e6b6e40e36fb8ddc334df76ba25aba7e15840c1ea3c1e577a5bac6015f884",
             "hashType": "sha256",
             "name": "nist-beacon.json"
         },
         {
-            "hash": "f46d07595d998360dce77320de0c22ac6f15a8caab63da0307d02a0086f7a139",
+            "hash": "9bed75da68021979b9239d1b20de84e71624dce87f9cd67e46b41c26ff5070cd",
             "hashType": "sha256",
             "name": "stellar.json"
         },
         {
-            "hash": "940c0eae0a197fab83fe7ab917168b8b75e3f643bcc17c3b483c291430b7f60f",
+            "hash": "72e703eead2a323520cf2fb2666e5123bc0917041f5214ea0dbfce1ca1916541",
             "hashType": "sha256",
             "name": "timestamp.json"
         },
         {
-            "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+            "hash": "2888750350b3b56433bd5ab042a8a36d5d5bf540410f19915eb54d5c855b0819",
             "hashType": "sha256",
             "name": "user-entropy.json"
         }
     ],
-    "hash": "5a46ea6ddaf8c6c5ba74f1faec0b1ff741b2c25bff85a9d87967cf902eb24e1d",
+    "hash": "26f48ca59e89fed7e578058ab8447d1556e4463a165cd69f46ab11e42fa4b50d",
     "hashIterations": 500000,
     "hashType": "sha256",
-    "prevHash": "06e9f0b58b5791065519593f1c89a9ad0535fe5013a7a418c1d715f19c8baae1"
+    "prevHash": "8a319298ee97ba48216866cb3e646609c62c3b083d26621f851f2929d98df4bc",
+    "signature": "4aeb600c40ab98ce99885fa01c86f8a557a6daeaeab135ae6bd1a93b10a863aebecc462c910aa12c9bad0765e887767ff1be774634be43dcce093bceb2ad380d"
 }
 ```
 
@@ -243,6 +237,31 @@ $ http https://entropy.truestamp.com/hash/605ba3b4cce44f2a09ad681d92aa20f5d12265
 }
 ```
 
+### Submit User Provided Entropy
+
+```sh
+$ http -v POST https://entropy.truestamp.com/entries entropy=bdd1d11b1ab7569c40e07a61b5b6071d80efcf5db176d8ab172e15d5566cb342
+
+{
+    "entropy": "bdd1d11b1ab7569c40e07a61b5b6071d80efcf5db176d8ab172e15d5566cb342",
+    "expiration": 1649450191,
+    "key": "entry::01G05CG9TV4XEKSYCZX7XKSNMR"
+}
+```
+
+### Get User Provided Entropy
+
+```sh
+$ http https://entropy.truestamp.com/entries
+
+[
+    "bdd1d11b1ab7569c40e07a61b5b6071d80efcf5db176d8ab172e15d5566cb342",
+    "1ea59779a41ea0e906459fcc66a2caf06026ad3e7478447ea3c7c1b98c6c67c4",
+    "bdd1d11b1ab7569c40e07a61b5b6071d80efcf5db176d8ab172e15d5566cb342",
+    "2bac2e7954a4d71de9a91fa131162f59799c88f4edb191c588b3faa2d0090656"
+]
+```
+
 ## Legal
 
-Copyright © 2020-2021 Truestamp Inc. All rights reserved.
+Copyright © 2020-2022 Truestamp Inc. All rights reserved.
