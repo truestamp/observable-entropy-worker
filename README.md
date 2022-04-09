@@ -262,6 +262,34 @@ $ http https://entropy.truestamp.com/entries
 ]
 ```
 
+### Verify Hash and Signature of Entropy by Commit Id
+
+Reconstruct the hash from the internal file hashes, and verify the public key signature over the hash.
+
+This API will take several seconds to complete as it has to do a significant amount of work to recompute the slow hash.
+
+```sh
+$ http https://entropy.truestamp.com/verify/commit/0813fb5b24e2e2a08363d90b7b77b4a1889fa77c
+
+{
+    "verified": true
+}
+```
+
+### Verify Hash and Signature of Entropy by Hash
+
+Reconstruct the hash from the internal file hashes, and verify the public key signature over the hash.
+
+This API will take several seconds to complete as it has to do a significant amount of work to recompute the slow hash.
+
+```sh
+$ http https://entropy.truestamp.com/verify/hash/605ba3b4cce44f2a09ad681d92aa20f5d122658e1878e18c71705d41c658891e
+
+{
+    "verified": true
+}
+```
+
 ## Legal
 
 Copyright © 2020-2022 Truestamp Inc. All rights reserved.

@@ -6,8 +6,9 @@ compatibility_date = "2021-09-18"
 
 workers_dev = false
 route = "https://entropy.truestamp.com/*"
+usage_model = 'unbound'
 
-kv_namespaces = [ 
+kv_namespaces = [
   { binding = "OBSERVABLE_ENTROPY", preview_id = "34f56fd8477046809e9c1c6effc668bc", id = "6ec2d152ffd24e848d522089dd63cd3e" }
 ]
 

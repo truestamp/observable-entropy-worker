@@ -11,6 +11,9 @@ import type { KV } from 'worktop/kv'
 
 import { DateTime } from 'luxon'
 
+import { sign } from 'tweetnacl'
+import { decode as hexDecode } from '@stablelib/hex'
+
 import {
   array,
   assert,
@@ -28,6 +31,7 @@ declare const OBSERVABLE_ENTROPY: KV.Namespace
 
 const SHA1_REGEX = /^(?:(0x)*([A-Fa-f0-9]{2}){20})$/i
 const SHA256_REGEX = /^(?:(0x)*([A-Fa-f0-9]{2}){32})$/i
+const SIGNATURE_REGEX = /^(?:(0x)*([A-Fa-f0-9]{2}){64})$/i
 const ED25519_PUBLIC_KEY =
   '2682144fd3a0a10edce91b9c622bf7e83ccb3816574e1a4071ad16842954dd26'
 const RAW_BASE_URL =
@@ -76,6 +80,19 @@ const sha256Hash = () =>
     }
   })
 
+const signature = () =>
+  define<string>('signature', (value) => {
+    try {
+      if (typeof value === 'string') {
+        return SIGNATURE_REGEX.test(value)
+      } else {
+        return false
+      }
+    } catch (error) {
+      return false
+    }
+  })
+
 export const EntryStruct = object({
   entropy: sha256Hash(),
   for: optional(string()),
@@ -89,6 +106,8 @@ export const JsonFileStruct = object({
   name: string(),
 })
 
+export type JsonFile = Infer<typeof JsonFileStruct>
+
 export const EntropyStruct = object({
   id: optional(sha1Hash()),
   createdAt: iso8601UTC(),
@@ -97,9 +116,23 @@ export const EntropyStruct = object({
   hashIterations: number(),
   hashType: enums(['sha256']),
   prevHash: optional(sha256Hash()),
-  signature: optional(string()),
+  signature: optional(signature()),
   forCommit: optional(sha1Hash()),
 })
+
+export type Entropy = Infer<typeof EntropyStruct>
+
+export const SignedEntropyStruct = object({
+  createdAt: iso8601UTC(),
+  files: array(JsonFileStruct),
+  hash: sha256Hash(),
+  hashIterations: number(),
+  hashType: enums(['sha256']),
+  prevHash: sha256Hash(),
+  signature: signature(),
+})
+
+export type SignedEntropy = Infer<typeof SignedEntropyStruct>
 
 export const GetEntriesRespStruct = array(sha256Hash())
 
@@ -125,16 +158,32 @@ async function digestMessage(message: string): Promise<ArrayBuffer> {
 const fetchEntropyByGitCommitId = async (id: string): Promise<Response> => {
   // w/ cloudflare caching
   // https://developers.cloudflare.com/workers/examples/cache-using-fetch
+  // https://developers.cloudflare.com/workers/runtime-apis/request/#requestinitcfproperties
   return await fetch(`${RAW_BASE_URL}/${id}/entropy.json`, {
-    headers: { 'Cache-Control': 'no-cache' },
+    cf: {
+      // Force response to be cached for 86400 seconds for 200 status
+      // codes, 1 second for 404, and do not cache 500 errors.
+      cacheTtlByStatus: { '200-299': 86400, '404': 5, '500-599': 0 },
+      cacheEverything: true,
+    },
   })
 }
 
 const fetchEntropyByEntropyHash = async (hash: string): Promise<Response> => {
   // Lookup the Git Commit Id for the given entropy hash
+  // w/ cloudflare caching
+  // https://developers.cloudflare.com/workers/examples/cache-using-fetch
+  // https://developers.cloudflare.com/workers/runtime-apis/request/#requestinitcfproperties
   const respHash = await fetch(
     `${RAW_BASE_URL}/main/index/by/entropy_hash/${hash}.json`,
-    { headers: { 'Cache-Control': 'no-cache' } },
+    {
+      cf: {
+        // Force response to be cached for 86400 seconds for 200 status
+        // codes, 1 second for 404, and do not cache 500 errors.
+        cacheTtlByStatus: { '200-299': 86400, '404': 5, '500-599': 0 },
+        cacheEverything: true,
+      },
+    },
   )
 
   if (respHash.ok) {
@@ -152,9 +201,94 @@ const fetchEntropyByEntropyHash = async (hash: string): Promise<Response> => {
 const fetchLatestEntropy = async (): Promise<Response> => {
   // w/ cloudflare caching
   // https://developers.cloudflare.com/workers/examples/cache-using-fetch
+  // https://developers.cloudflare.com/workers/runtime-apis/request/#requestinitcfproperties
   return await fetch(`${RAW_BASE_URL}/main/entropy.json`, {
-    headers: { 'Cache-Control': 'no-cache' },
+    cf: {
+      // Force response to be cached for 86400 seconds for 200 status
+      // codes, 1 second for 404, and do not cache 500 errors.
+      cacheTtlByStatus: { '200-299': 86400, '404': 5, '500-599': 0 },
+      cacheEverything: true,
+    },
   })
+}
+
+const concatenateFileHashes = (files: JsonFile[]): string => {
+  const hashes = []
+  for (const file of files) {
+    hashes.push(file.hash)
+  }
+  return hashes.join('')
+}
+
+// generate a new hash slowly (naïve unicorn style 'sloth' function)
+const genSlowHash = async (
+  hash: string,
+  hashIterations: number,
+  hashType: string,
+): Promise<string> => {
+  let newHash = hash
+
+  const hashTypeCoerced = hashType.replace('sha', 'sha-').toUpperCase()
+
+  for (let i = 0; i < hashIterations; i++) {
+    const encoder = new TextEncoder()
+    const hashBuffer = await crypto.subtle.digest(
+      hashTypeCoerced,
+      encoder.encode(newHash),
+    )
+
+    const hashArray = Array.from(new Uint8Array(hashBuffer))
+
+    newHash = hashArray.map((b) => b.toString(16).padStart(2, '0')).join('')
+  }
+
+  return newHash
+}
+
+const hasValidEntropySignature = async (
+  hash: string,
+  entropy: SignedEntropy,
+): Promise<boolean> => {
+  try {
+    assert(entropy, SignedEntropyStruct)
+
+    if (hash !== entropy.hash) {
+      return false
+    }
+
+    // Verify ed25519 signature over the hash
+    if (
+      !sign.detached.verify(
+        hexDecode(entropy.hash),
+        hexDecode(entropy.signature),
+        hexDecode(ED25519_PUBLIC_KEY),
+      )
+    ) {
+      return false
+    }
+
+    // Concatenate the file hashes in the Entropy file
+    const concatenatedFileHashes = concatenateFileHashes(entropy.files)
+
+    // Generate the slow hash of the concatenated file hashes
+    const slowHash = await genSlowHash(
+      concatenatedFileHashes,
+      entropy.hashIterations,
+      'sha256',
+    )
+
+    // Confirm that the slow hash matches the hash of the Entropy file
+    // Confirming that the entropy files were not tampered with.
+    // This takes about 7 seconds to run on Cloudflare and thus
+    // required switching to the 'Unbound' Worker plan.
+    if (slowHash !== hash) {
+      return false
+    }
+
+    return true
+  } catch (error) {
+    return false
+  }
 }
 
 const API = new Router()
@@ -172,16 +306,20 @@ API.prepare = CORS.preflight({
 // Redirect to GitHub repository README
 // http https://entropy.truestamp.com/
 API.add('GET', '/', async (req, res): Promise<void> => {
-  res.setHeader('Cache-Control', 'public, max-age=5, s-max-age=5')
+  res.setHeader('Cache-Control', 'public, max-age=60, s-max-age=60')
   res.setHeader('Location', 'https://observable-entropy.truestamp.com')
-  res.send(302, 'Found')
+  res.send(302, {
+    status: '302',
+    code: 'Found',
+    description: `Please visit https://observable-entropy.truestamp.com for more info.`,
+  })
 })
 
 // Get the ed25519 public key, for the corresponding private key which is stored as a
 // repository secret in the observable-entropy github repository.
 // http https://entropy.truestamp.com/pubkey
 API.add('GET', '/pubkey', async (req, res): Promise<void> => {
-  res.setHeader('Cache-Control', 'public, max-age=5, s-max-age=5')
+  res.setHeader('Cache-Control', 'public, max-age=60, s-max-age=60')
   res.send(200, {
     key: ED25519_PUBLIC_KEY,
   })
@@ -223,6 +361,8 @@ API.add('GET', '/latest', async (req, res): Promise<void> => {
       })
     }
   } catch (err) {
+    res.setHeader('Cache-Control', 'public, max-age=0, s-max-age=0')
+
     if (err instanceof StructError) {
       console.log('### err: ', err)
       const { key, path, value, type } = err
@@ -293,6 +433,8 @@ API.add('GET', '/commit/:id', async (req, res) => {
       })
     }
   } catch (err) {
+    res.setHeader('Cache-Control', 'public, max-age=0, s-max-age=0')
+
     if (err instanceof StructError) {
       console.log('### err: ', err)
       const { key, path, value, type } = err
@@ -362,6 +504,8 @@ API.add('GET', '/hash/:hash', async (req, res) => {
       })
     }
   } catch (err) {
+    res.setHeader('Cache-Control', 'public, max-age=0, s-max-age=0')
+
     if (err instanceof StructError) {
       console.log('### err: ', err)
       const { key, path, value, type } = err
@@ -462,6 +606,8 @@ API.add('POST', '/entries', async (req, res) => {
       })
     }
   } catch (err) {
+    res.setHeader('Cache-Control', 'public, max-age=0, s-max-age=0')
+
     if (err instanceof StructError) {
       console.log('### err: ', err)
       const { key, path, value, type } = err
@@ -539,6 +685,170 @@ API.add('GET', '/entries', async (req, res) => {
 
   res.setHeader('Cache-Control', 'public, max-age=5, s-max-age=5')
   res.send(200, kvEntries)
+})
+
+// Retrieve the entropy file and validate that its file hashes result in the same
+// top level hash, and that the signature over the hash is valid.
+// http https://entropy.truestamp.com/verify/commit/0813fb5b24e2e2a08363d90b7b77b4a1889fa77c
+API.add('GET', '/verify/commit/:id', async (req, res) => {
+  const id = req.params.id
+
+  if (!SHA1_REGEX.test(id)) {
+    return res.send(400, {
+      status: '400',
+      code: 'Invalid parameters',
+      description: `invalid attribute value for : id`,
+    })
+  }
+
+  try {
+    const entropyResp: Response = await fetchEntropyByGitCommitId(id)
+    if (entropyResp.ok) {
+      const entropy: SignedEntropy = await entropyResp.json<SignedEntropy>()
+
+      const verified = await hasValidEntropySignature(entropy.hash, entropy)
+
+      res.setHeader('Cache-Control', 'public, max-age=5, s-max-age=5')
+      if (verified) {
+        res.send(200, { verified: true })
+      } else {
+        res.send(406, {
+          status: '406',
+          code: 'Not Acceptable',
+          description: `Invalid signature for commit : ${id}`,
+        })
+      }
+    } else {
+      res.send(404, {
+        status: '404',
+        code: 'Not found',
+        description: `No entropy found for commit : ${id}`,
+      })
+    }
+  } catch (err) {
+    res.setHeader('Cache-Control', 'public, max-age=0, s-max-age=0')
+
+    if (err instanceof StructError) {
+      console.log('### err: ', err)
+      const { key, path, value, type } = err
+
+      if (value === undefined) {
+        return res.send(400, {
+          status: '400',
+          code: 'Invalid parameters',
+          description: `missing required attribute : ${key}`,
+          path: path,
+          attribute: key,
+        })
+      } else if (type === 'never') {
+        return res.send(400, {
+          status: '400',
+          code: 'Invalid parameters',
+          description: `unknown attribute : ${key}`,
+          path: path,
+          attribute: key,
+        })
+      } else {
+        return res.send(400, {
+          status: '400',
+          code: 'Invalid parameters',
+          description: `invalid attribute value for : ${key}`,
+          path: path,
+          attribute: key,
+          value: value,
+        })
+      }
+    } else if (err instanceof Error) {
+      console.error('### err: ', err)
+      return res.send(500, {
+        status: '500',
+        code: 'Unhandled error',
+        description: `Internal server error : ${err.message}`,
+      })
+    }
+  }
+})
+
+// Retrieve the entropy file and validate that its file hashes result in the same
+// top level hash, and that the signature over the hash is valid.
+// http https://entropy.truestamp.com/verify/hash/605ba3b4cce44f2a09ad681d92aa20f5d122658e1878e18c71705d41c658891e
+API.add('GET', '/verify/hash/:hash', async (req, res) => {
+  const hash = req.params.hash
+
+  if (!SHA256_REGEX.test(hash)) {
+    return res.send(400, {
+      status: '400',
+      code: 'Invalid parameters',
+      description: `invalid attribute value for : hash`,
+    })
+  }
+
+  try {
+    const entropyResp: Response = await fetchEntropyByEntropyHash(hash)
+    if (entropyResp.ok) {
+      const entropy: SignedEntropy = await entropyResp.json<SignedEntropy>()
+
+      const verified = await hasValidEntropySignature(hash, entropy)
+
+      res.setHeader('Cache-Control', 'public, max-age=5, s-max-age=5')
+      if (verified) {
+        res.send(200, { verified: true })
+      } else {
+        res.send(406, {
+          status: '406',
+          code: 'Not Acceptable',
+          description: `Invalid signature for hash : hash ${hash}`,
+        })
+      }
+    } else {
+      res.send(404, {
+        status: '404',
+        code: 'Not found',
+        description: `No entropy found for hash : ${hash}`,
+      })
+    }
+  } catch (err) {
+    res.setHeader('Cache-Control', 'public, max-age=0, s-max-age=0')
+
+    if (err instanceof StructError) {
+      console.log('### err: ', err)
+      const { key, path, value, type } = err
+
+      if (value === undefined) {
+        return res.send(400, {
+          status: '400',
+          code: 'Invalid parameters',
+          description: `missing required attribute : ${key}`,
+          path: path,
+          attribute: key,
+        })
+      } else if (type === 'never') {
+        return res.send(400, {
+          status: '400',
+          code: 'Invalid parameters',
+          description: `unknown attribute : ${key}`,
+          path: path,
+          attribute: key,
+        })
+      } else {
+        return res.send(400, {
+          status: '400',
+          code: 'Invalid parameters',
+          description: `invalid attribute value for : ${key}`,
+          path: path,
+          attribute: key,
+          value: value,
+        })
+      }
+    } else if (err instanceof Error) {
+      console.error('### err: ', err)
+      return res.send(500, {
+        status: '500',
+        code: 'Unhandled error',
+        description: `Internal server error : ${err.message}`,
+      })
+    }
+  }
 })
 
 // Attach "fetch" event handler
