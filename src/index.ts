@@ -710,7 +710,7 @@ API.add('GET', '/verify/commit/:id', async (req, res) => {
 
       res.setHeader('Cache-Control', 'public, max-age=5, s-max-age=5')
       if (verified) {
-        res.send(200, { verified: true })
+        res.send(200, { verified: true, entropy: entropy })
       } else {
         res.send(406, {
           status: '406',
@@ -722,7 +722,7 @@ API.add('GET', '/verify/commit/:id', async (req, res) => {
       res.send(404, {
         status: '404',
         code: 'Not found',
-        description: `No entropy found for commit : ${id}`,
+        description: `No entropy found yet for commit : ${id}. It can take some time if this is freshly created.`,
       })
     }
   } catch (err) {
@@ -792,7 +792,7 @@ API.add('GET', '/verify/hash/:hash', async (req, res) => {
 
       res.setHeader('Cache-Control', 'public, max-age=5, s-max-age=5')
       if (verified) {
-        res.send(200, { verified: true })
+        res.send(200, { verified: true, entropy: entropy })
       } else {
         res.send(406, {
           status: '406',
@@ -804,7 +804,7 @@ API.add('GET', '/verify/hash/:hash', async (req, res) => {
       res.send(404, {
         status: '404',
         code: 'Not found',
-        description: `No entropy found for hash : ${hash}`,
+        description: `No entropy found yet for hash : ${hash}. It can take some time if this is freshly created.`,
       })
     }
   } catch (err) {
