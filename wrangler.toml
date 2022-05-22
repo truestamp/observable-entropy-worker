@@ -1,19 +1,13 @@
-type = "javascript"
-name = "observable-entropy-worker"
-account_id = "695154f6abd64a9df3e04b21e0aa0fc4"
-zone_id = "dfde562d26487f5e3d6f3ec412bb16a6"
-compatibility_date = "2021-09-18"
-
-workers_dev = false
-route = "https://entropy.truestamp.com/*"
+name = "observable-entropy"
+main = "src/index.ts"
+workers_dev = true
+node_compat = true
 usage_model = 'unbound'
+compatibility_date = "2022-05-16"
 
 kv_namespaces = [
-  { binding = "OBSERVABLE_ENTROPY", preview_id = "34f56fd8477046809e9c1c6effc668bc", id = "6ec2d152ffd24e848d522089dd63cd3e" }
+  { binding = "OBSERVABLE_ENTROPY", id = "6ec2d152ffd24e848d522089dd63cd3e" }
 ]
 
-[build]
-command = "npm install && npm run build"
+route = { pattern = "entropy.truestamp.com", zone_name = "truestamp.com", custom_domain = true }
 
-[build.upload]
-format = "service-worker"
